@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>aregularCorp | Under Construction</title>
     <style>
         * {
@@ -10,10 +10,11 @@
             padding: 0;
             box-sizing: border-box;
             user-select: none;
+            -webkit-user-select: none;
+            touch-action: none; /* Mencegah guncangan scroll/zoom bawaan HP saat menyentuh canvas */
         }
 
         body {
-            /* Exactly matching your banner's vibrant cyan color */
             background-color: #4be0e3; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             overflow: hidden;
@@ -21,7 +22,6 @@
             width: 100vw;
         }
 
-        /* Interactive Canvas layer */
         #particle-canvas {
             position: absolute;
             top: 0;
@@ -31,17 +31,17 @@
             z-index: 1;
         }
 
-        /* Branding Overlay mirroring your LinkedIn layout */
+        /* Branding Overlay - Dibuat responsif untuk HP */
         .branding-container {
             position: absolute;
-            bottom: 10%;
-            right: 8%;
+            bottom: 6%;
+            right: 6%;
             text-align: right;
             z-index: 10;
-            pointer-events: none; /* Allows mouse interactions to pass through to the dots */
+            pointer-events: none; 
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 15px;
         }
 
         .text-group {
@@ -51,55 +51,85 @@
         }
 
         .studio, .research {
-            font-size: 1.5rem;
+            font-size: 1.1rem;
             font-weight: 400;
             line-height: 1.2;
             opacity: 0.9;
         }
 
         .corp {
-            font-size: 1.8rem;
+            font-size: 1.4rem;
             font-weight: 800;
-            margin-top: 4px;
+            margin-top: 2px;
             letter-spacing: -0.02em;
         }
 
-        /* The signature black circle logo with white dot */
         .logo-circle {
-            width: 70px;
-            height: 70px;
+            width: 55px;
+            height: 55px;
             background-color: #000000;
             border-radius: 50%;
             position: relative;
+            flex-shrink: 0;
         }
 
         .logo-dot {
-            width: 16px;
-            height: 16px;
+            width: 12px;
+            height: 12px;
             background-color: #ffffff;
             border-radius: 50%;
             position: absolute;
-            bottom: 16px;
-            left: 16px;
+            bottom: 12px;
+            left: 12px;
         }
 
-        /* Instruction badge for the user */
         .instruction {
             position: absolute;
-            top: 5%;
+            top: 4%;
             left: 5%;
-            color: rgba(0, 0, 0, 0.4);
-            font-size: 0.85rem;
+            right: 5%;
+            color: rgba(0, 0, 0, 0.45);
+            font-size: 0.75rem;
             letter-spacing: 0.05em;
             text-transform: uppercase;
             z-index: 10;
             font-weight: 600;
+            pointer-events: none;
+        }
+
+        /* Responsivitas Layar Desktop / Tablet */
+        @media (min-width: 768px) {
+            .instruction {
+                font-size: 0.85rem;
+            }
+            .branding-container {
+                bottom: 10%;
+                right: 8%;
+                gap: 20px;
+            }
+            .studio, .research {
+                font-size: 1.5rem;
+            }
+            .corp {
+                font-size: 1.8rem;
+                margin-top: 4px;
+            }
+            .logo-circle {
+                width: 70px;
+                height: 70px;
+            }
+            .logo-dot {
+                width: 16px;
+                height: 16px;
+                bottom: 16px;
+                left: 16px;
+            }
         }
     </style>
 </head>
 <body>
 
-    <div class="instruction">Move your mouse for the entertainment ;)</div>
+    <div class="instruction">Move mouse or drag your finger for entertainment ;)</div>
 
     <canvas id="particle-canvas"></canvas>
 
@@ -119,15 +149,30 @@
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
         let particles = [];
-        let mouse = { x: null, y: null, radius: 110 };
+        // Mengatur radius interaksi awal berdasarkan lebar layar (lebih kecil di HP)
+        let isMobile = window.innerWidth < 768;
+        let mouse = { 
+            x: null, 
+            y: null, 
+            radius: isMobile ? 60 : 110 
+        };
 
         function initCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            
+            isMobile = window.innerWidth < 768;
+            mouse.radius = isMobile ? 60 : 110;
+
             setupParticles();
         }
 
-        window.addEventListener('resize', initCanvas);
+        // Debounce resize event agar HP tidak lag saat rotasi layar
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(initCanvas, 200);
+        });
         
         window.addEventListener('mousemove', function(event) {
             mouse.x = event.clientX;
@@ -139,13 +184,14 @@
             mouse.y = null;
         });
 
-        // Touch support for mobile devices
+        // Touch support yang lebih presisi untuk layar sentuh HP
         window.addEventListener('touchmove', function(event) {
             if(event.touches.length > 0) {
                 mouse.x = event.touches[0].clientX;
                 mouse.y = event.touches[0].clientY;
             }
-        });
+        }, { passive: true });
+
         window.addEventListener('touchend', function() {
             mouse.x = null;
             mouse.y = null;
@@ -157,10 +203,11 @@
                 this.y = Math.random() * canvas.height;
                 this.targetX = targetX;
                 this.targetY = targetY;
-                this.size = Math.random() * 2 + 1.5; // clean minimalist white dots
+                // Ukuran partikel disesuaikan agar tetap terlihat tajam di HP
+                this.size = isMobile ? (Math.random() * 1.5 + 1.2) : (Math.random() * 2 + 1.5);
                 this.baseX = targetX;
                 this.baseY = targetY;
-                this.density = (Math.random() * 30) + 15;
+                this.density = (Math.random() * 25) + 15;
             }
 
             draw() {
@@ -172,14 +219,12 @@
             }
 
             update() {
-                // Interaction physics
                 let dx = mouse.x - this.x;
                 let dy = mouse.y - this.y;
                 let distance = Math.sqrt(dx * dx + dy * dy);
                 let forceDirectionX = dx / distance;
                 let forceDirectionY = dy / distance;
                 
-                // Max out force threshold
                 let maxDistance = mouse.radius;
                 let force = (maxDistance - distance) / maxDistance;
                 if (force < 0) force = 0;
@@ -191,7 +236,6 @@
                     this.x -= directionX;
                     this.y -= directionY;
                 } else {
-                    // Smoothly transition back to text formation
                     if (this.x !== this.baseX) {
                         let dxBack = this.x - this.baseX;
                         this.x -= dxBack / 12;
@@ -206,29 +250,32 @@
 
         function setupParticles() {
             particles = [];
-            
-            // Render text hidden behind the scenes to sample dot coordinates
             ctx.fillStyle = 'white';
             
-            // Adaptive font sizing based on screens
-            let fontSize = Math.min(canvas.width * 0.045, 52); 
+            // Ukuran font adaptif yang lebih proporsional di layar vertikal HP
+            let fontSize = isMobile ? Math.min(canvas.width * 0.065, 24) : Math.min(canvas.width * 0.045, 52); 
             ctx.font = `900 ${fontSize}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
-            // Hidden text payload
-            ctx.fillText("aregularCorp website is under construction", canvas.width / 2, canvas.height / 2.3);
+            let text = "aregularCorp website is under construction";
+            
+            // Jika layar terlalu sempit (HP Potret), pecah teks menjadi dua baris agar tidak kepotong
+            if (isMobile && canvas.width < 480) {
+                ctx.fillText("aregularCorp website", canvas.width / 2, canvas.height / 2.5 - 15);
+                ctx.fillText("is under construction", canvas.width / 2, canvas.height / 2.5 + 15);
+            } else {
+                ctx.fillText(text, canvas.width / 2, canvas.height / 2.3);
+            }
 
-            // Scan the text pixels to convert them into mathematical dots
             const textCoordinates = ctx.getImageData(0, 0, canvas.width, canvas.height);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Step rate determines dot density layout
-            const step = Math.max(4, Math.floor(canvas.width / 350)); 
+            // Jarak pemindaian titik (step) disesuaikan agar performa render di HP tetap mulus (60fps)
+            const step = isMobile ? 4 : Math.max(4, Math.floor(canvas.width / 350)); 
 
             for (let y = 0; y < textCoordinates.height; y += step) {
                 for (let x = 0; x < textCoordinates.width; x += step) {
-                    // Look for non-transparent pixels defining the text edges
                     if (textCoordinates.data[(y * 4 * textCoordinates.width) + (x * 4) + 3] > 128) {
                         particles.push(new Particle(x, y, x, y));
                     }
@@ -245,7 +292,6 @@
             requestAnimationFrame(animate);
         }
 
-        // Initialize setup
         initCanvas();
         animate();
     </script>
